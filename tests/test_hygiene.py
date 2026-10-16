@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SELF_PATH = Path(__file__).resolve().relative_to(REPO_ROOT).as_posix()
 
 ATTRIBUTION_PATTERNS = (
     "Co-Authored-By",
@@ -32,7 +33,7 @@ def tracked_files():
         check=True,
         capture_output=True,
     ).stdout
-    return [p for p in output.decode("utf-8").split("\0") if p]
+    return [p for p in output.decode("utf-8").split("\0") if p and p != SELF_PATH]
 
 
 def read_text(path):
