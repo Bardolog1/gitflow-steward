@@ -1,0 +1,13 @@
+[[entry]]
+id = "apple"
+name = "Apple (CFBundleVersion)"
+status = "verified"
+docs = "https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundleversion"
+detect = ["Info.plist"]
+scheme = "numeric"
+numeric_parts = 3
+
+[[entry.files]]
+glob = "Info.plist"
+kind = "plist"
+key = "CFBundleVersion"

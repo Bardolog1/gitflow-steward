@@ -1,0 +1,13 @@
+[[entry]]
+id = "helm"
+name = "Helm (Chart.yaml)"
+status = "provisional"
+docs = "https://helm.sh/docs/topics/charts/#the-chartyaml-file"
+detect = ["Chart.yaml"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "Chart.yaml"
+kind = "regex"
+pattern = '^version:\s*([^\s#]+)$'
+strip_comments = "hash"
