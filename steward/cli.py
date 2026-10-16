@@ -1,11 +1,20 @@
 import argparse
 import json
+import os
 import sys
 from io import TextIOBase
 
-from steward.model import Report
+from steward import branches, config as config_module, git, readiness as readiness_module, routing, tags
+from steward.model import Finding, Report, Severity
 
 SCHEMA = 1
+
+_ROUTE_SEVERITY = {
+    "critical": routing.CRITICAL,
+    "non-critical": routing.NON_CRITICAL,
+    "unsure": routing.UNDETERMINED,
+}
+_ROUTE_STAGE = {"final": "released", "rc": "rc"}
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -70,23 +79,100 @@ def _envelope(command: str, report: Report, **extra) -> dict:
     return payload
 
 
+def _error_envelope(command: str, message: str) -> dict:
+    return {
+        "schema": SCHEMA,
+        "command": command,
+        "repo": None,
+        "head": None,
+        "config_source": None,
+        "findings": [],
+        "summary": {"fail": 0, "warn": 0, "info": 0},
+        "error": message,
+    }
+
+
+def _collect(root: str):
+    """Load config and git state together; raises GitError/ConfigError."""
+    cfg = config_module.load(root)
+    state = git.collect(root)
+    return state, cfg
+
+
 def _run_audit(args, out) -> int:
-    report = Report()
-    print(json.dumps(_envelope("audit", report)), file=out)
+    root = os.getcwd()
+    try:
+        state, cfg = _collect(root)
+    except (git.GitError, config_module.ConfigError) as exc:
+        print(json.dumps(_error_envelope("audit", str(exc))), file=out)
+        return 2
+    findings = tuple(branches.check(state, cfg)) + tuple(tags.check(state, cfg))
+    report = Report(findings=findings)
+    payload = _envelope("audit", report, repo=root, head=state.head, config_source=cfg.source)
+    print(json.dumps(payload), file=out)
     return 1 if report.has_fail() else 0
 
 
 def _run_readiness(args, out) -> int:
-    report = Report()
-    decision = "go" if not report.has_fail() else "no-go"
-    payload = _envelope("readiness", report, decision=decision, blockers=[])
+    root = os.getcwd()
+    try:
+        state, cfg = _collect(root)
+    except (git.GitError, config_module.ConfigError) as exc:
+        print(json.dumps(_error_envelope("readiness", str(exc))), file=out)
+        return 2
+    result = readiness_module.check(state, cfg, args.release)
+    report = Report(findings=result.findings)
+    payload = _envelope(
+        "readiness", report, repo=root, head=state.head, config_source=cfg.source,
+        decision=result.decision, blockers=[f.rule for f in result.blockers()],
+    )
     print(json.dumps(payload), file=out)
-    return 0 if decision == "go" else 1
+    return 0 if result.decision == "go" else 1
+
+
+def _open_release(state) -> str | None:
+    by_name = {b.name: b for b in state.branches}
+    main = by_name.get("main")
+    if main is None:
+        return None
+    main_ancestors = set()
+    stack = [main.sha]
+    while stack:
+        sha = stack.pop()
+        if sha in main_ancestors or sha not in state.commits:
+            continue
+        main_ancestors.add(sha)
+        stack.extend(state.commits[sha].parents)
+    open_releases = [b.name for b in state.branches if b.name.startswith("release/") and b.sha not in main_ancestors]
+    return open_releases[0] if len(open_releases) == 1 else None
 
 
 def _run_route(args, out) -> int:
-    report = Report()
-    print(json.dumps(_envelope("route", report)), file=out)
+    severity = _ROUTE_SEVERITY[args.severity]
+    stage = _ROUTE_STAGE[args.stage]
+    open_release = None
+    if stage == "rc":
+        try:
+            state = git.collect(os.getcwd())
+        except git.GitError:
+            state = None
+        if state is not None:
+            open_release = _open_release(state)
+
+    try:
+        plan = routing.route(severity, stage, open_release=open_release)
+    except routing.RoutingError as exc:
+        findings = (Finding(
+            rule="route.undetermined", severity=Severity.INFO,
+            subject=args.severity, message=str(exc),
+        ),)
+    else:
+        findings = (Finding(
+            rule="route.plan", severity=Severity.INFO, subject=args.severity,
+            message=f"route to {plan.branch_type}/* from {plan.from_branch}",
+            evidence={"branch_type": plan.branch_type, "from_branch": plan.from_branch},
+        ),)
+    print(json.dumps(_envelope("route", Report(findings=findings))), file=out)
     return 0
 
 

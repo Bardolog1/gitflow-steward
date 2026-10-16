@@ -1,9 +1,11 @@
 import contextlib
 import io
 import json
+import os
 import unittest
 
 from steward.cli import main
+from tests.gitrepo import GitRepo
 
 
 def run_cli(argv, stdin_text=""):
@@ -13,22 +15,56 @@ def run_cli(argv, stdin_text=""):
     return exit_code, stdout.getvalue()
 
 
-class AuditCommandTests(unittest.TestCase):
-    def test_json_envelope_shape(self):
+class _InRepo(unittest.TestCase):
+    """Runs the CLI with cwd set to a disposable fixture repository."""
+
+    def setUp(self):
+        self.repo = GitRepo.init()
+        self._old_cwd = os.getcwd()
+        os.chdir(self.repo.path)
+
+    def tearDown(self):
+        os.chdir(self._old_cwd)
+        self.repo.cleanup()
+
+
+class AuditCommandTests(_InRepo):
+    def test_json_envelope_shape_on_a_clean_repo(self):
+        self.repo.commit("a.txt", "1", "init")
         exit_code, output = run_cli(["audit", "--json"])
         payload = json.loads(output)
         self.assertEqual(payload["schema"], 1)
         self.assertEqual(payload["command"], "audit")
-        self.assertIn("repo", payload)
-        self.assertIn("head", payload)
-        self.assertIn("config_source", payload)
+        self.assertEqual(payload["repo"], self.repo.path)
+        self.assertEqual(payload["head"], "main")
+        self.assertIsNone(payload["config_source"])
         self.assertEqual(payload["findings"], [])
         self.assertEqual(payload["summary"], {"fail": 0, "warn": 0, "info": 0})
         self.assertEqual(exit_code, 0)
 
+    def test_fail_finding_sets_exit_code_one(self):
+        self.repo.commit("a.txt", "1", "init")
+        self.repo.tag("v1.0.0", annotated=False)
+        exit_code, output = run_cli(["audit", "--json"])
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 1)
+        self.assertTrue(any(f["rule"] == "tag.not-annotated" for f in payload["findings"]))
+        self.assertEqual(payload["summary"]["fail"], 1)
 
-class ReadinessCommandTests(unittest.TestCase):
-    def test_envelope_adds_decision_and_blockers(self):
+    def test_environment_error_exits_two(self):
+        (self.repo.path_obj / ".gitflow.toml").write_text("rc_minimum = [", encoding="utf-8")
+        exit_code, output = run_cli(["audit", "--json"])
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 2)
+        self.assertIn("error", payload)
+
+
+class ReadinessCommandTests(_InRepo):
+    def test_go_decision_with_no_blockers(self):
+        self.repo.commit("a.txt", "1", "init")
+        self.repo.branch("release/1.1.0")
+        self.repo.tag("v1.1.0-rc.1", annotated=True)
+        self.repo.checkout("main")
         exit_code, output = run_cli(["readiness", "--release", "release/1.1.0", "--json"])
         payload = json.loads(output)
         self.assertEqual(payload["command"], "readiness")
@@ -36,14 +72,42 @@ class ReadinessCommandTests(unittest.TestCase):
         self.assertEqual(payload["blockers"], [])
         self.assertEqual(exit_code, 0)
 
+    def test_no_go_decision_lists_blockers(self):
+        self.repo.commit("a.txt", "1", "init")
+        self.repo.branch("release/1.1.0")
+        self.repo.checkout("main")
+        exit_code, output = run_cli(["readiness", "--release", "release/1.1.0", "--json"])
+        payload = json.loads(output)
+        self.assertEqual(payload["decision"], "no-go")
+        self.assertIn("readiness.rc-minimum", payload["blockers"])
+        self.assertEqual(exit_code, 1)
 
-class RouteCommandTests(unittest.TestCase):
-    def test_exit_code_is_always_zero(self):
-        exit_code, output = run_cli([
-            "route", "--severity", "critical", "--stage", "final",
-        ])
+
+class RouteCommandTests(_InRepo):
+    def test_critical_final_routes_to_hotfix_from_main(self):
+        exit_code, output = run_cli(["route", "--severity", "critical", "--stage", "final"])
         payload = json.loads(output)
         self.assertEqual(payload["command"], "route")
+        finding = payload["findings"][0]
+        self.assertEqual(finding["rule"], "route.plan")
+        self.assertEqual(finding["evidence"], {"branch_type": "hotfix", "from_branch": "main"})
+        self.assertEqual(exit_code, 0)
+
+    def test_unsure_severity_is_undetermined_and_still_exits_zero(self):
+        exit_code, output = run_cli(["route", "--severity", "unsure", "--stage", "final"])
+        payload = json.loads(output)
+        self.assertEqual(payload["findings"][0]["rule"], "route.undetermined")
+        self.assertEqual(exit_code, 0)
+
+    def test_critical_rc_routes_to_bugfix_targeting_the_open_release(self):
+        self.repo.commit("a.txt", "1", "init")
+        self.repo.branch("release/1.2.0")
+        self.repo.commit("version.txt", "1.2.0", "bump version")
+        self.repo.checkout("main")
+        exit_code, output = run_cli(["route", "--severity", "critical", "--stage", "rc"])
+        payload = json.loads(output)
+        finding = payload["findings"][0]
+        self.assertEqual(finding["evidence"], {"branch_type": "bugfix", "from_branch": "release/1.2.0"})
         self.assertEqual(exit_code, 0)
 
 
