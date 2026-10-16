@@ -1,0 +1,13 @@
+[[entry]]
+id = "npm"
+name = "npm (package.json)"
+status = "verified"
+docs = "https://docs.npmjs.com/cli/v10/configuring-npm/package-json#version"
+detect = ["package.json"]
+scheme = "semver"
+excludes = ["package-lock.json", "npm-shrinkwrap.json"]
+
+[[entry.files]]
+glob = "package.json"
+kind = "json"
+key = "version"

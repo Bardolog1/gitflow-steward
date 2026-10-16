@@ -1,2 +1,4 @@
 bin/steward text eol=lf
 *.py text eol=lf
+*.toml text eol=lf
+tests/fixtures/** text eol=lf

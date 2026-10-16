@@ -26,6 +26,22 @@ class GitRunnerTests(unittest.TestCase):
         runner = GitRunner(self.repo.path)
         self.assertEqual(runner.run("status", "--short"), "")
 
+    def test_show_reads_file_content_at_rev(self):
+        sha = self.repo.commit("version.txt", "1.2.3", "first")
+        runner = GitRunner(self.repo.path)
+        self.assertEqual(runner.show(sha, "version.txt"), "1.2.3")
+
+    def test_show_returns_none_for_missing_path(self):
+        sha = self.repo.commit("a.txt", "one", "first")
+        runner = GitRunner(self.repo.path)
+        self.assertIsNone(runner.show(sha, "does-not-exist.txt"))
+
+    def test_ls_tree_lists_tracked_files_at_rev(self):
+        self.repo.commit("a.txt", "one", "first")
+        sha = self.repo.commit("b/c.txt", "two", "second")
+        runner = GitRunner(self.repo.path)
+        self.assertEqual(set(runner.ls_tree(sha)), {"a.txt", "b/c.txt"})
+
 
 class CollectTests(unittest.TestCase):
     def setUp(self):

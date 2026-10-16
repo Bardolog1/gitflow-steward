@@ -1,0 +1,9 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>fixture</artifactId>
+  <version>${revision}</version>
+  <properties>
+    <revision>1.4.0-SNAPSHOT</revision>
+  </properties>
+</project>

@@ -30,6 +30,18 @@ class GitRunner:
             raise GitError(result.stderr.decode("utf-8", "replace").strip())
         return result.stdout.decode("utf-8", "replace").replace("\r\n", "\n")
 
+    def show(self, rev: str, path: str) -> str | None:
+        """Read a file's content at a rev, straight from the git object. None if absent there."""
+        try:
+            return self.run("show", f"{rev}:{path}")
+        except GitError:
+            return None
+
+    def ls_tree(self, rev: str) -> tuple[str, ...]:
+        """Tracked file paths at a rev (read-only; never touches the working tree)."""
+        out = self.run("ls-tree", "-r", "--name-only", "-z", rev)
+        return tuple(p for p in out.split("\x00") if p)
+
 
 @dataclass(frozen=True)
 class Commit:
