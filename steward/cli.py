@@ -3,9 +3,13 @@ import json
 import os
 import sys
 from io import TextIOBase
+from pathlib import Path
 
 from steward import branches, config as config_module, git, readiness as readiness_module, routing, tags
+from steward.guards import push_guard, readonly_guard
 from steward.model import Finding, Report, Severity
+
+_STEWARD_HOME = str(Path(__file__).resolve().parent.parent)
 
 SCHEMA = 1
 
@@ -188,19 +192,39 @@ def _run_lint(args, out) -> int:
     return 1 if report.has_fail() else 0
 
 
-def _run_hook(args, stdin, out) -> int:
-    try:
-        json.load(stdin)
-    except (json.JSONDecodeError, ValueError):
-        pass
-    payload = {
+def _hook_payload(decision: str | None, reason: str | None) -> dict:
+    return {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": None,
-            "permissionDecisionReason": None,
+            "permissionDecision": decision,
+            "permissionDecisionReason": reason,
         }
     }
-    print(json.dumps(payload), file=out)
+
+
+def _run_hook(args, stdin, out) -> int:
+    try:
+        payload_in = json.load(stdin)
+        if not isinstance(payload_in, dict):
+            payload_in = {}
+    except (json.JSONDecodeError, ValueError):
+        payload_in = {}
+
+    tool_input = payload_in.get("tool_input")
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    cwd = payload_in.get("cwd") or os.getcwd()
+
+    if not isinstance(command, str):
+        decision, reason = "deny", "no command found in tool_input"
+    elif args.kind == "readonly":
+        result = readonly_guard.decide(command, _STEWARD_HOME)
+        decision = "allow" if result.allow else "deny"
+        reason = result.reason
+    else:
+        result = push_guard.decide(command, cwd)
+        decision, reason = result.decision, result.reason
+
+    print(json.dumps(_hook_payload(decision, reason)), file=out)
     return 0
 
 
