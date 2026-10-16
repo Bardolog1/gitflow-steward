@@ -7,6 +7,7 @@ from pathlib import Path
 
 from steward import branches, config as config_module, git, readiness as readiness_module, routing, tags
 from steward.guards import push_guard, readonly_guard
+from steward.lint import runner as lint_runner
 from steward.model import Finding, Report, Severity
 
 _STEWARD_HOME = str(Path(__file__).resolve().parent.parent)
@@ -187,8 +188,13 @@ def _run_notes(args, out) -> int:
 
 
 def _run_lint(args, out) -> int:
-    report = Report()
-    print(json.dumps(_envelope("lint", report)), file=out)
+    try:
+        report = lint_runner.check(args.paths, root=os.getcwd())
+    except OSError as exc:
+        print(json.dumps(_error_envelope("lint", str(exc))), file=out)
+        return 2
+    payload = _envelope("lint", report, heading="style findings")
+    print(json.dumps(payload), file=out)
     return 1 if report.has_fail() else 0
 
 

@@ -1,0 +1,24 @@
+[fail]
+hype_words = ["elevate", "seamless", "unleash", "cutting-edge", "leverage", "robust", "powerful"]
+chatbot_residue = [
+    "i hope this helps",
+    "feel free to ask",
+    "as an ai language model",
+    "let me know if you have any other questions",
+]
+openers = ["great question!", "certainly!", "of course!", "i'd be happy to"]
+closers = ["i hope this helps", "i hope this helps clarify", "hope that helps"]
+
+[warn]
+ai_vocabulary = [
+    "utilize", "delve", "boost", "tapestry", "landscape", "foster", "vibrant",
+    "navigate", "unlock", "harness", "streamline", "paradigm", "holistic",
+    "synergy", "innovative", "transformative",
+]
+ai_vocabulary_threshold_per_100_words = 3
+paragraph_max_words = 150
+vague_attribution = [
+    "some say", "many believe", "studies show", "experts agree",
+    "it is widely known that", "research suggests",
+]
+em_dash_enabled = false
