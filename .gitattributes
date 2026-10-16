@@ -1,0 +1,2 @@
+bin/steward text eol=lf
+*.py text eol=lf
