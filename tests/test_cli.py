@@ -143,6 +143,57 @@ class HookCommandTests(unittest.TestCase):
         payload = json.loads(output)
         self.assertIn("hookSpecificOutput", payload)
 
+    def test_hook_readonly_allows_a_recognized_command(self):
+        exit_code, output = run_cli(
+            ["hook", "readonly"],
+            stdin_text='{"tool_input": {"command": "git status"}, "cwd": "."}',
+        )
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            payload["hookSpecificOutput"]["permissionDecision"], "allow"
+        )
+
+    def test_hook_readonly_denies_an_unrecognized_command(self):
+        exit_code, output = run_cli(
+            ["hook", "readonly"],
+            stdin_text='{"tool_input": {"command": "git push origin main"}, "cwd": "."}',
+        )
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            payload["hookSpecificOutput"]["permissionDecision"], "deny"
+        )
+        self.assertTrue(payload["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_hook_push_asks_for_a_push(self):
+        exit_code, output = run_cli(
+            ["hook", "push"],
+            stdin_text='{"tool_input": {"command": "git push origin main"}, "cwd": "."}',
+        )
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            payload["hookSpecificOutput"]["permissionDecision"], "ask"
+        )
+
+    def test_hook_push_has_no_decision_for_a_safe_command(self):
+        exit_code, output = run_cli(
+            ["hook", "push"],
+            stdin_text='{"tool_input": {"command": "git status"}, "cwd": "."}',
+        )
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertIsNone(payload["hookSpecificOutput"]["permissionDecision"])
+
+    def test_hook_missing_tool_input_denies_readonly_without_raising(self):
+        exit_code, output = run_cli(["hook", "readonly"], stdin_text="{}")
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            payload["hookSpecificOutput"]["permissionDecision"], "deny"
+        )
+
 
 class UsageErrorTests(unittest.TestCase):
     def test_missing_subcommand_exits_two(self):

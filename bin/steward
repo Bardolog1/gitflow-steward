@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+for py in python3 python py; do
+  command -v "$py" >/dev/null 2>&1 || continue
+  "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null || continue
+  exec "$py" -E -s "$(dirname "$0")/../steward_cli.py" "$@"
+done
+echo "gitflow-steward: Python 3.11+ not found (tried python3, python, py)" >&2
+exit 2
