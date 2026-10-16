@@ -138,6 +138,21 @@ def _merge_bases(runner: GitRunner, branch_names: tuple[str, ...]) -> dict[tuple
     return bases
 
 
+def commit_subjects_between(root: str, from_rev: str, to_rev: str) -> tuple[tuple[str, str], ...]:
+    """`(sha, subject)` pairs reachable from `to_rev` but not `from_rev`, newest first."""
+    runner = GitRunner(root)
+    fmt = f"%H{_FS}%s{_RS}"
+    out = runner.run("log", f"{from_rev}..{to_rev}", f"--format={fmt}")
+    result = []
+    for record in out.split(_RS):
+        record = record.strip("\n")
+        if not record:
+            continue
+        sha, subject = record.split(_FS)
+        result.append((sha, subject))
+    return tuple(result)
+
+
 def collect(root: str) -> RepoState:
     """Build one frozen RepoState snapshot. Analyzers read this; they never call git."""
     runner = GitRunner(root)

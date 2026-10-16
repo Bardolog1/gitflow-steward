@@ -9,6 +9,7 @@ from steward import branches, config as config_module, git, readiness as readine
 from steward.guards import push_guard, readonly_guard
 from steward.lint import runner as lint_runner
 from steward.model import Finding, Report, Severity
+from steward.notes import conventional as conventional_module, render as render_module
 
 _STEWARD_HOME = str(Path(__file__).resolve().parent.parent)
 
@@ -181,10 +182,63 @@ def _run_route(args, out) -> int:
     return 0
 
 
-def _run_notes(args, out) -> int:
+def _run_notes_questions(out) -> int:
+    questions = render_module.load_questions()
     report = Report()
+    print(json.dumps(_envelope("notes", report, questions=list(questions))), file=out)
+    return 0
+
+
+def _run_notes_draft(args, stdin, out) -> int:
+    if args.mode == "automatic":
+        if not args.from_rev or not args.to_rev:
+            print(json.dumps(_error_envelope("notes", "--from and --to are required for automatic mode")), file=out)
+            return 2
+        try:
+            commits = git.commit_subjects_between(os.getcwd(), args.from_rev, args.to_rev)
+        except git.GitError as exc:
+            print(json.dumps(_error_envelope("notes", str(exc))), file=out)
+            return 2
+        draft = render_module.render_automatic(conventional_module.group_commits(commits))
+    elif args.mode == "guided":
+        text = stdin.read() if args.answers == "-" else ""
+        try:
+            answers = json.loads(text) if text else {}
+        except json.JSONDecodeError as exc:
+            print(json.dumps(_error_envelope("notes", str(exc))), file=out)
+            return 2
+        draft = render_module.render_guided(answers)
+    else:
+        draft = ""
+    report = Report()
+    print(json.dumps(_envelope("notes", report, draft=draft)), file=out)
+    return 1 if report.has_fail() else 0
+
+
+def _run_notes_check(args, out) -> int:
+    try:
+        with open(args.file, "r", encoding="utf-8") as handle:
+            text = handle.read()
+    except OSError as exc:
+        print(json.dumps(_error_envelope("notes", str(exc))), file=out)
+        return 2
+    findings = ()
+    if not text.strip():
+        findings = (Finding(
+            rule="notes.empty", severity=Severity.FAIL, subject=args.file,
+            message="release notes file is empty",
+        ),)
+    report = Report(findings=findings)
     print(json.dumps(_envelope("notes", report)), file=out)
     return 1 if report.has_fail() else 0
+
+
+def _run_notes(args, stdin, out) -> int:
+    if args.notes_command == "questions":
+        return _run_notes_questions(out)
+    if args.notes_command == "draft":
+        return _run_notes_draft(args, stdin, out)
+    return _run_notes_check(args, out)
 
 
 def _run_lint(args, out) -> int:
@@ -238,7 +292,6 @@ _HANDLERS = {
     "audit": _run_audit,
     "readiness": _run_readiness,
     "route": _run_route,
-    "notes": _run_notes,
     "lint": _run_lint,
 }
 
@@ -254,6 +307,8 @@ def main(argv: list[str] | None = None, stdin: TextIOBase | None = None, stdout=
 
     if args.command == "hook":
         return _run_hook(args, stdin if stdin is not None else sys.stdin, out)
+    if args.command == "notes":
+        return _run_notes(args, stdin if stdin is not None else sys.stdin, out)
 
     handler = _HANDLERS[args.command]
     return handler(args, out)

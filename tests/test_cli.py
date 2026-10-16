@@ -125,6 +125,62 @@ class NotesCommandTests(unittest.TestCase):
         payload = json.loads(output)
         self.assertEqual(payload["command"], "notes")
         self.assertEqual(exit_code, 0)
+        self.assertEqual(len(payload["questions"]), 8)
+        self.assertEqual(payload["questions"][0]["slot"], "summary")
+
+    def test_draft_automatic_groups_commits_between_revs(self):
+        repo = GitRepo.init()
+        self.addCleanup(repo.cleanup)
+        old_cwd = os.getcwd()
+        os.chdir(repo.path)
+        self.addCleanup(os.chdir, old_cwd)
+        first = repo.commit("a.txt", "1", "chore: init")
+        last = repo.commit("a.txt", "2", "feat: add thing")
+        exit_code, output = run_cli(["notes", "draft", "--mode", "automatic", "--from", first, "--to", last])
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("## Features", payload["draft"])
+        self.assertIn("- add thing", payload["draft"])
+
+    def test_draft_guided_reads_answers_from_stdin(self):
+        answers = json.dumps({"summary": "Patch release.", "breaking": "", "fixed": "A crash."})
+        exit_code, output = run_cli(["notes", "draft", "--mode", "guided", "--answers", "-"], stdin_text=answers)
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Patch release.", payload["draft"])
+        self.assertIn("## Fixed", payload["draft"])
+        self.assertNotIn("## Added", payload["draft"])
+
+    def test_draft_guided_invalid_json_exits_two(self):
+        exit_code, output = run_cli(["notes", "draft", "--mode", "guided", "--answers", "-"], stdin_text="not json")
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 2)
+        self.assertIn("error", payload)
+
+    def test_check_missing_file_exits_two(self):
+        exit_code, output = run_cli(["notes", "check", "--file", "does-not-exist.md"])
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 2)
+        self.assertIn("error", payload)
+
+    def test_check_empty_file_fails(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as handle:
+            path = handle.name
+        self.addCleanup(os.remove, path)
+        exit_code, output = run_cli(["notes", "check", "--file", path])
+        payload = json.loads(output)
+        self.assertEqual(exit_code, 1)
+        self.assertTrue(any(f["rule"] == "notes.empty" for f in payload["findings"]))
+
+    def test_check_non_empty_file_passes(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as handle:
+            handle.write("## Added\n\n- thing\n")
+            path = handle.name
+        self.addCleanup(os.remove, path)
+        exit_code, output = run_cli(["notes", "check", "--file", path])
+        self.assertEqual(exit_code, 0)
 
 
 class HookCommandTests(unittest.TestCase):
