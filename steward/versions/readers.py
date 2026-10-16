@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 from steward.versions.schema import FileSpec
 
-_XMLNS_RE = re.compile(r'\sxmlns(:\w+)?="[^"]*"')
+_XMLNS_RE = re.compile(r'\sxmlns(:(\w+))?="[^"]*"')
 _DOCTYPE_RE = re.compile(r"<!DOCTYPE", re.IGNORECASE)
 _HASH_COMMENT_RE = re.compile(r"#.*$", re.MULTILINE)
 _SLASH_LINE_COMMENT_RE = re.compile(r"//.*$", re.MULTILINE)
@@ -58,7 +58,10 @@ def _read_toml(spec: FileSpec, content: str) -> str:
 def _read_xml(spec: FileSpec, content: str) -> str:
     if _DOCTYPE_RE.search(content):
         raise ReadError("XML DOCTYPE is refused")
+    prefixes = [m.group(2) for m in _XMLNS_RE.finditer(content) if m.group(2)]
     stripped = _XMLNS_RE.sub("", content)
+    for prefix in prefixes:
+        stripped = re.sub(rf'\s{re.escape(prefix)}:\w+="[^"]*"', "", stripped)
     root = ElementTree.fromstring(stripped)
     node = root.find(spec.key)
     if node is None or node.text is None:
