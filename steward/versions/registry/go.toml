@@ -1,0 +1,12 @@
+[[entry]]
+id = "go"
+name = "Go (go.mod)"
+status = "verified"
+docs = "https://go.dev/ref/mod#go-mod-file-module"
+detect = ["go.mod"]
+scheme = "semver"
+
+[[entry.tag_derived]]
+glob = "go.mod"
+kind = "regex"
+pattern = '^module\s+(\S+)$'

@@ -1,0 +1,20 @@
+[[entry]]
+id = "dotnet"
+name = ".NET (csproj)"
+status = "provisional"
+docs = "https://learn.microsoft.com/dotnet/core/project-sdk/msbuild-props#version"
+detect = ["*.csproj"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "demo.csproj"
+kind = "xml"
+key = "./PropertyGroup/Version"
+
+[[entry.files.inherits]]
+when = '^\$\(VersionPrefix\)$'
+
+[entry.files.inherits.source]
+glob = "Directory.Build.props"
+kind = "xml"
+key = "./PropertyGroup/VersionPrefix"

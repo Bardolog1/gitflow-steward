@@ -1,0 +1,21 @@
+[[entry]]
+id = "cargo"
+name = "Rust (Cargo.toml)"
+status = "verified"
+docs = "https://doc.rust-lang.org/cargo/reference/workspaces.html"
+detect = ["Cargo.toml"]
+scheme = "semver"
+excludes = ["Cargo.lock"]
+
+[[entry.files]]
+glob = "Cargo.toml"
+kind = "toml"
+key = "package.version.workspace"
+
+[[entry.files.inherits]]
+when = '^True$'
+
+[entry.files.inherits.source]
+glob = "Cargo.toml"
+kind = "toml"
+key = "workspace.package.version"

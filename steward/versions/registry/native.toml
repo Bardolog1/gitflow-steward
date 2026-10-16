@@ -1,0 +1,13 @@
+[[entry]]
+id = "cmake"
+name = "CMake (CMakeLists.txt)"
+status = "verified"
+docs = "https://cmake.org/cmake/help/latest/command/project.html"
+detect = ["CMakeLists.txt"]
+scheme = "numeric"
+
+[[entry.files]]
+glob = "CMakeLists.txt"
+kind = "regex"
+pattern = '^project\([A-Za-z0-9_]+ VERSION ([0-9]+(?:\.[0-9]+){0,3})\)$'
+strip_comments = "hash"
