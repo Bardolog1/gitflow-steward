@@ -1,0 +1,13 @@
+[[entry]]
+id = "ruby"
+name = "RubyGems (version.rb)"
+status = "verified"
+docs = "https://guides.rubygems.org/specification-reference/#version"
+detect = ["*.gemspec"]
+scheme = "rubygems"
+
+[[entry.files]]
+glob = "lib/version.rb"
+kind = "regex"
+pattern = '^\s*VERSION\s*=\s*"([^"]+)"$'
+strip_comments = "hash"

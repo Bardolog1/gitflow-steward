@@ -1,0 +1,25 @@
+[[entry]]
+id = "ocaml"
+name = "OCaml (opam)"
+status = "provisional"
+docs = "https://opam.ocaml.org/doc/Manual.html#Package-definitions"
+detect = ["*.opam"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "demo.opam"
+kind = "regex"
+pattern = '^version:\s*"([^"]+)"$'
+
+[[entry]]
+id = "haskell"
+name = "Haskell (Cabal)"
+status = "provisional"
+docs = "https://cabal.readthedocs.io/en/stable/cabal-package.html#pkg-field-version"
+detect = ["*.cabal"]
+scheme = "numeric"
+
+[[entry.files]]
+glob = "demo.cabal"
+kind = "regex"
+pattern = '^version:\s*([0-9.]+)$'

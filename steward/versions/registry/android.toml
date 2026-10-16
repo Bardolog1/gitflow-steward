@@ -1,0 +1,13 @@
+[[entry]]
+id = "android"
+name = "Android (Gradle versionName)"
+status = "provisional"
+docs = "https://developer.android.com/build/configure-app-module#set-your-apps-version"
+detect = ["build.gradle"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "build.gradle"
+kind = "regex"
+pattern = '^\s*versionName\s+"([^"]+)"$'
+strip_comments = "slash"

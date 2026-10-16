@@ -1,0 +1,12 @@
+[[entry]]
+id = "tauri"
+name = "Tauri (tauri.conf.json)"
+status = "verified"
+docs = "https://tauri.app/reference/config/#version"
+detect = ["tauri.conf.json"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "tauri.conf.json"
+kind = "json"
+key = "version"

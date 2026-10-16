@@ -1,0 +1,6 @@
+android {
+    defaultConfig {
+        versionName "1.4.0"
+        versionCode 10400
+    }
+}

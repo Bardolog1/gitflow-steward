@@ -1,0 +1,12 @@
+[[entry]]
+id = "composer"
+name = "Composer (PHP)"
+status = "verified"
+docs = "https://getcomposer.org/doc/04-schema.md#version"
+detect = ["composer.json"]
+scheme = "semver"
+
+[[entry.tag_derived]]
+glob = "composer.json"
+kind = "json"
+key = "name"
