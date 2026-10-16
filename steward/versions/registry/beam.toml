@@ -1,0 +1,13 @@
+[[entry]]
+id = "elixir"
+name = "Elixir (mix.exs)"
+status = "provisional"
+docs = "https://hexdocs.pm/mix/Mix.Project.html"
+detect = ["mix.exs"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "mix.exs"
+kind = "regex"
+pattern = '^\s*version:\s*"([^"]+)",?$'
+strip_comments = "hash"
