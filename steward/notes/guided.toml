@@ -1,0 +1,42 @@
+# The eight guided release-notes questions, fixed order, fixed wording.
+# Source: specs/release-notes/spec.md, "Guided mode asks a fixed, documented question set".
+
+[[question]]
+id = 1
+slot = "summary"
+question = "One-sentence summary: what is this release, in one sentence?"
+
+[[question]]
+id = 2
+slot = "breaking"
+question = "Are there breaking changes? If yes, describe them and the upgrade steps a user must take."
+
+[[question]]
+id = 3
+slot = "added"
+question = "What was added?"
+
+[[question]]
+id = 4
+slot = "changed"
+question = "What changed (non-breaking behavior changes)?"
+
+[[question]]
+id = 5
+slot = "deprecated"
+question = "What was deprecated?"
+
+[[question]]
+id = 6
+slot = "removed"
+question = "What was removed?"
+
+[[question]]
+id = 7
+slot = "fixed"
+question = "What was fixed, including any security fixes?"
+
+[[question]]
+id = 8
+slot = "known_issues"
+question = "Are there known issues to carry forward into this release's notes?"
