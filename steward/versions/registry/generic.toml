@@ -1,0 +1,13 @@
+[[entry]]
+id = "dart"
+name = "Dart/Flutter (pubspec.yaml)"
+status = "verified"
+docs = "https://dart.dev/tools/pub/pubspec#version"
+detect = ["pubspec.yaml"]
+scheme = "semver"
+
+[[entry.files]]
+glob = "pubspec.yaml"
+kind = "regex"
+pattern = '^version:\s*([^\s#]+)$'
+strip_comments = "hash"
