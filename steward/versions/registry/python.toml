@@ -1,0 +1,13 @@
+[[entry]]
+id = "python"
+name = "Python (pyproject.toml)"
+status = "verified"
+docs = "https://packaging.python.org/en/latest/specifications/pyproject-toml/#version"
+detect = ["pyproject.toml"]
+scheme = "pep440"
+dev_marker = ".dev0"
+
+[[entry.files]]
+glob = "pyproject.toml"
+kind = "toml"
+key = "project.version"

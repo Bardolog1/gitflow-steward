@@ -1,0 +1,21 @@
+[[entry]]
+id = "maven"
+name = "Maven (pom.xml)"
+status = "verified"
+docs = "https://maven.apache.org/guides/mini/guide-maven-ci-friendly.html"
+detect = ["pom.xml"]
+scheme = "maven"
+workspace = "fixed"
+
+[[entry.files]]
+glob = "pom.xml"
+kind = "xml"
+key = "./version"
+
+[[entry.files.inherits]]
+when = '^\$\{revision\}$'
+
+[entry.files.inherits.source]
+glob = "pom.xml"
+kind = "xml"
+key = "./properties/revision"
